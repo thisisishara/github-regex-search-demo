@@ -26,6 +26,15 @@ def create_arg_parser():
     search_repos_parser.add_argument(
         "-r", "--regex", type=str, help="The regex pattern to search for in the repos."
     )
+    search_repos_parser.add_argument(
+        "-q", "--query", type=str, help="A query to search repos with."
+    )
+    search_repos_parser.add_argument(
+        "-d", "--days", type=int, help="Number of days to traceback the origin."
+    )
+    search_repos_parser.add_argument(
+        "-p", "--page", type=int, help="Number of the result page to navigate through repos."
+    )
 
     add_parser = subparsers.add_parser("add", help="Add a new key to the secrets file.")
     add_parser.add_argument(
@@ -46,7 +55,7 @@ def create_arg_parser():
     return parser
 
 
-def trigger_search(regex: Text) -> None:
+def trigger_search(regex: Text, query: Text, days: int, page: int = 1) -> None:
     headers = (
         {"Authorization": f"Bearer {GITHUB_ACCESS_TOKEN}"}
         if GITHUB_ACCESS_TOKEN
@@ -74,15 +83,17 @@ def trigger_search(regex: Text) -> None:
         print(f"TOPICS: \n{topics_str}\n")
 
     # Calculate the date and time n days ago
-    yesterday = datetime.now() - timedelta(days=30)
+    days_ = days if days else 30
+    yesterday = datetime.now() - timedelta(days=days_)
     yesterday_str = yesterday.strftime("%Y-%m-%dT%H:%M:%SZ")
     time_str = f"+created:>{yesterday_str}"
 
     # Define the regex pattern to search for
     regex_pattern = rf"{CONTENT_REGEX}" if not regex else regex
+    query_pattern = query if query else "chatgpt"
 
     # Search for repositories that match a certain topic and were created within the last 24 hours
-    search_url = f"https://api.github.com/search/repositories?q=chatgpt{topics_str}{time_str}&sort=stars&order=desc"
+    search_url = f"https://api.github.com/search/repositories?q={query_pattern}{topics_str}{time_str}&sort=stars&order=desc&page={page}"
     response = requests.get(search_url, headers=headers)
     print(f"SEARCH URL: {search_url}\n")
     # print(f"response from repo search: \n{response.json()}")
@@ -98,7 +109,7 @@ def trigger_search(regex: Text) -> None:
     repos = response.json()["items"]
 
     # Loop through each repository and search for the regex pattern
-    print(f"\n[INFO] ** Searching beings. Regex: {regex_pattern}\n")
+    print(f"\n[INFO] ** Searching for the regex: {regex_pattern}\n")
     for repo_id, repo in enumerate(repos):
         print(
             f"INSPECTING REPO [{repo_id+1}/{repo_count}]: \n{repo['name']}\n{repo['html_url']}"
@@ -107,10 +118,14 @@ def trigger_search(regex: Text) -> None:
         contents_url = f"https://api.github.com/repos/{repo['full_name']}/contents"
         response = requests.get(contents_url, headers=headers)
         contents = response.json()
+        print(response.status_code)
 
         if response.status_code == 403:
             print(f"\n[ERROR] ** API Rate limit exceeded for the IP")
             return
+        if response.status_code == 404:
+            print(f"[ERROR] ** Repository is empty. Skipping...\n")
+            continue
 
         for file in contents:
             if file["type"] == "file":
@@ -158,7 +173,7 @@ if __name__ == "__main__":
         args = parser.parse_args()
 
         if args.command == "github":
-            trigger_search(regex=args.regex)
+            trigger_search(regex=args.regex, query=args.query, days=args.days, page=args.page)
         elif args.command == "add":
             add_key_to_file(args.key)
         elif args.command == "search":
