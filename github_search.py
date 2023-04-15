@@ -33,7 +33,10 @@ def create_arg_parser():
         "-d", "--days", type=int, help="Number of days to traceback the origin."
     )
     search_repos_parser.add_argument(
-        "-p", "--page", type=int, help="Number of the result page to navigate through repos."
+        "-p",
+        "--page",
+        type=int,
+        help="Number of the result page to navigate through repos.",
     )
 
     add_parser = subparsers.add_parser("add", help="Add a new key to the secrets file.")
@@ -173,7 +176,9 @@ if __name__ == "__main__":
         args = parser.parse_args()
 
         if args.command == "github":
-            trigger_search(regex=args.regex, query=args.query, days=args.days, page=args.page)
+            trigger_search(
+                regex=args.regex, query=args.query, days=args.days, page=args.page
+            )
         elif args.command == "add":
             add_key_to_file(args.key)
         elif args.command == "search":
