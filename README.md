@@ -1,6 +1,6 @@
 #  github-public-search-demo
 
-A simple Python script that searches public GitHub repos for a specific regex pattern  
+A simple Python script that searches public GitHub repos for a specific query, timestamp, topics, and regex patterns  
 <br>
 
 ##  Caution!
